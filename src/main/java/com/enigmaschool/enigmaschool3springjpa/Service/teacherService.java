@@ -6,18 +6,22 @@ import com.enigmaschool.enigmaschool3springjpa.Exception.NotFoundException;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Teacher;
 import com.enigmaschool.enigmaschool3springjpa.Repository.TeacherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class teacherService{
     @Autowired
     private TeacherRepository teacherRepository;
 
+    private final int DB_MAX_DATA = 9;
     public Page<Teacher> getAll(Pageable pageable) {
         try {
             List<Teacher> teachers = teacherRepository.findAll();
@@ -38,16 +42,17 @@ public class teacherService{
 
     public Teacher create(Teacher teacher) {
         try {
-            List<Teacher> teacherList= teacherRepository.findAll();
-            if (teacherList.size()> 9){
-                throw new MaxDataException("Student",9);
+            Long count = teacherRepository.count();
+            if (count >= DB_MAX_DATA){
+                throw new MaxDataException("Teacher", DB_MAX_DATA);
             }
-            if (teacherList.stream().anyMatch(email ->
-                    email.getEmail().equalsIgnoreCase(teacher.getEmail()))){
-                throw new DuplicateDataException("email taken");
+            List<Teacher> teachers = teacherRepository.findAll();
+            if (teachers.stream().anyMatch(existingTeacher ->
+                    existingTeacher.getEmail().equalsIgnoreCase(teacher.getEmail()))) {
+                throw new DataIntegrityViolationException("Teacher email already exists " + teacher.getEmail());
             }
             return teacherRepository.save(teacher);
-        }catch (MaxDataException | DuplicateDataException e){
+        }catch (MaxDataException | DataIntegrityViolationException e){
             throw e;
         }catch (Exception e){
             throw new RuntimeException(e);
@@ -56,21 +61,21 @@ public class teacherService{
 
     public List<Teacher> createBulk(List<Teacher> teachers) {
         try {
-            if (teachers.size() >= 25){
-                throw new MaxDataException("Student", 25);
+            List<Teacher> teacherList = teacherRepository.findAll();
+            if (teacherList.size() + teachers.size() >= DB_MAX_DATA){
+                throw new MaxDataException("Teacher", DB_MAX_DATA);
             }
-            if (teachers.stream().map(Teacher::getEmail)
-                    .distinct()
-                    .count() < teachers.size()) {
-                throw new DuplicateDataException("Duplicate email found");
-            }
-            List<Teacher> existingStudents = teacherRepository.findAll();
-            if (existingStudents.stream().anyMatch(student ->
-                    student.getEmail().equalsIgnoreCase(student.getEmail()))) {
-                throw new DuplicateDataException("Student email already exists");
+            for (Teacher teacher : teachers) {
+                Set<String> emailSet = teachers.stream().map(Teacher::getEmail).collect(Collectors.toSet());
+                if (emailSet.size() != teachers.size()) {
+                    throw new DataIntegrityViolationException("Duplicate email found in bulk data " + teacher.getEmail());
+                }
+                if (teacherList.stream().anyMatch(existingTeacher -> existingTeacher.getEmail().equalsIgnoreCase(teacher.getEmail()))) {
+                    throw new DataIntegrityViolationException("Teacher email already exists " + teacher.getEmail());
+                }
             }
             return teacherRepository.saveAll(teachers);
-        }catch (DuplicateDataException | MaxDataException  e){
+        }catch (DataIntegrityViolationException | MaxDataException  e){
             throw e;
         }catch (Exception e){
             throw new RuntimeException(e);
@@ -100,14 +105,14 @@ public class teacherService{
             List<Teacher> teachers = teacherRepository.findAll();
             if (teachers.stream().anyMatch(existingTeacher ->
                     existingTeacher.getEmail().equalsIgnoreCase(teacher.getEmail()))) {
-                throw new DuplicateDataException("Student email already exists " + teacher.getEmail());
+                throw new DataIntegrityViolationException("Teacher email already exists " + teacher.getEmail());
             }
           Teacher existing = teacherUpdate.get();
             existing.setFirstName(teacher.getFirstName());
             existing.setEmail(teacher.getEmail());
             existing.setLastName(teacher.getLastName());
             teacherRepository.save(existing);
-        }catch (NotFoundException| DuplicateDataException e){
+        }catch (NotFoundException| DataIntegrityViolationException e){
             throw e;
         } catch (Exception e){
             throw new RuntimeException(e);
@@ -125,6 +130,20 @@ public class teacherService{
             throw e;
         } catch (Exception e){
             throw new RuntimeException(e);
+        }
+    }
+
+    public Optional<List<Teacher>> findByName(String firstName, String lastName){
+        try {
+            Optional<List<Teacher>> teachers = teacherRepository.findByFirstNameContainsIgnoreCaseOrLastNameContainsIgnoreCase(firstName,lastName);
+            if (teachers.isEmpty()){
+                throw new NotFoundException("Cannot Find Teacher");
+            }
+            return teachers;
+        }catch (NotFoundException e){
+            throw e;
+        }catch (Exception e){
+            throw new RuntimeException(e.getMessage());
         }
     }
 }

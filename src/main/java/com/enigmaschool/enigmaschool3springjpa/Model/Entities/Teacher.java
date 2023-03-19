@@ -17,7 +17,7 @@ public class Teacher {
 
     @Email
     @NotNull
-    @Column(name = "email", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "email", nullable = false, length = Integer.MAX_VALUE, unique = true)
     private String email;
 
     @NotNull

@@ -5,6 +5,7 @@ import com.enigmaschool.enigmaschool3springjpa.Exception.MaxDataException;
 import com.enigmaschool.enigmaschool3springjpa.Exception.NotFoundException;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -58,5 +59,10 @@ public class ErrorController {
             errors.add(constraintViolation.getMessage());
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("07", errors.toString()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException e){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("08", e.getMessage()));
     }
 }

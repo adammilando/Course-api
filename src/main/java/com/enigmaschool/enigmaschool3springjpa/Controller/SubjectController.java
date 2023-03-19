@@ -1,11 +1,17 @@
 package com.enigmaschool.enigmaschool3springjpa.Controller;
 
+import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.IdentityDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.SearchDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.SubjectDto;
+import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Student;
+import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Teacher;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.CommonResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.SuccessResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Subject;
 import com.enigmaschool.enigmaschool3springjpa.Service.SubjectService;
+import com.enigmaschool.enigmaschool3springjpa.Service.studentService;
+import com.enigmaschool.enigmaschool3springjpa.Service.teacherService;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +33,11 @@ import java.util.stream.Collectors;
 public class SubjectController {
     @Autowired
     SubjectService schoolService;
+    @Autowired
+    teacherService teacherService;
+
+    studentService studentService;
+
     @Autowired
     ModelMapper modelMapper;
 
@@ -57,7 +68,7 @@ public class SubjectController {
     }
 
     @PostMapping("/search/studentName/{size}/{page}")
-    public ResponseEntity findStudentName(@RequestBody SearchDto searchDto,@PathVariable int size, @PathVariable int page){
+    public ResponseEntity findStudentName(@RequestBody SearchDto searchDto,@PathVariable("size") int size, @PathVariable("page") int page){
         Pageable pageable = PageRequest.of(size,page);
         Optional<Page<Subject>> subjects = schoolService.findStudentInSubjectByName(searchDto.getSearchFirstName(), searchDto.getSearchLastName(),pageable);
         CommonResponse commonResponse = new SuccessResponse<>("Success",subjects);
@@ -95,4 +106,20 @@ public class SubjectController {
         CommonResponse commonResponse = new SuccessResponse<>("Success", subject);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
     }
+
+    @PostMapping("/{subjectId}/add-students")
+    public ResponseEntity<?> addStudentsToSubject(@PathVariable Integer subjectId, @RequestBody List<Student> students) {
+        Subject subject = schoolService.addStudentsToSubject(subjectId, students);
+        return ResponseEntity.ok().body(new SuccessResponse<>("Success", subject));
+    }
+
+
+
+    @PutMapping("/{subjectId}/change-teacher")
+    public ResponseEntity changeTeacherInSubject(@PathVariable Integer subjectId, @RequestBody Teacher teacher) {
+        Subject subject = schoolService.updateTeacherInSubject(subjectId,teacher);
+        CommonResponse commonResponse = new SuccessResponse<>("Success", subject);
+        return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
+    }
+
 }

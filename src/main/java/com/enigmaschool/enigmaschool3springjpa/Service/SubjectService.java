@@ -3,15 +3,20 @@ package com.enigmaschool.enigmaschool3springjpa.Service;
 import com.enigmaschool.enigmaschool3springjpa.Exception.DuplicateDataException;
 import com.enigmaschool.enigmaschool3springjpa.Exception.MaxDataException;
 import com.enigmaschool.enigmaschool3springjpa.Exception.NotFoundException;
+import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Student;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Subject;
+import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Teacher;
 import com.enigmaschool.enigmaschool3springjpa.Repository.SubjectRepository;
+import com.enigmaschool.enigmaschool3springjpa.Repository.TeacherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SubjectService{
@@ -19,6 +24,10 @@ public class SubjectService{
     private SubjectRepository subjectRepository;
     @Autowired
     private studentService studentService;
+
+    private final int DB_MAX_DATA = 6;
+    @Autowired
+    private TeacherRepository teacherRepository;
 
     public Page<Subject> getAll(Pageable pageable){
         try {
@@ -38,30 +47,17 @@ public class SubjectService{
         }
     }
 
-//    public List<Subject> getAll() {
-//        try {
-//            List<Subject> subjects = subjectRepository.findAll();
-//            if (subjects.isEmpty()){
-//                throw new NotFoundException("Databse Empty");
-//            }
-//            return subjects;
-//        }catch (NotFoundException e){
-//            throw e;
-//        }catch (Exception e){
-//            throw new RuntimeException(e);
-//        }
-//    }
-
     public Subject create(Subject subject) {
         try {
             Long count = subjectRepository.count();
-            if (count>= 6){
-                throw new MaxDataException("Student",6);
+            if (count>= DB_MAX_DATA){
+                throw new MaxDataException("Student",DB_MAX_DATA);
             }
-//            if (subjectList.stream().anyMatch(name ->
-//                    name.getName().equalsIgnoreCase(subject.getName()))){
-//                throw new DuplicateDataException("subject Already exists");
-//            }
+            List<Subject> subjects = subjectRepository.findAll();
+            if (subjects.stream().anyMatch(existingSubject ->
+                    existingSubject.getName().equalsIgnoreCase(subject.getName()))) {
+                throw new DataIntegrityViolationException("Teacher email already exists " + subject.getName());
+            }
             return subjectRepository.save(subject);
         }catch (MaxDataException | DuplicateDataException e){
             throw e;
@@ -74,18 +70,17 @@ public class SubjectService{
     public List<Subject> createBulk(List<Subject> subjects) {
         try {
             List<Subject> subjectList = subjectRepository.findAll();
-            if (subjectList.size()+subjects.size() >= 25){
-                throw new MaxDataException("Subject", 25);
+            if (subjectList.size()+subjects.size() >= DB_MAX_DATA){
+                throw new MaxDataException("Subject", DB_MAX_DATA);
             }
-            if (subjects.stream().map(Subject::getName)
-                    .distinct()
-                    .count() < subjects.size()) {
-                throw new DuplicateDataException("Duplicate subject found");
-            }
-            List<Subject> existingSubjects = subjectRepository.findAll();
-            if (existingSubjects.stream().anyMatch(subject ->
-                    subject.getName().equalsIgnoreCase(subject.getName()))) {
-                throw new DuplicateDataException("Student email already exists");
+            for (Subject subject : subjects) {
+                Set<String> emailSet = subjects.stream().map(Subject::getName).collect(Collectors.toSet());
+                if (emailSet.size() != subjects.size()) {
+                    throw new DataIntegrityViolationException("Duplicate email found in bulk data " + subject.getName());
+                }
+                if (subjectList.stream().anyMatch(existingSubject -> existingSubject.getName().equalsIgnoreCase(subject.getName()))) {
+                    throw new DataIntegrityViolationException("Teacher email already exists " + subject.getName());
+                }
             }
             return subjectRepository.saveAll(subjects);
         }catch (DuplicateDataException | MaxDataException  e){
@@ -109,7 +104,8 @@ public class SubjectService{
         }
     }
 
-    public void update(Subject subject, Integer id) {
+
+    public void update(Subject newSubject, Integer id) {
         try {
             Optional<Subject> subjectUpdate = subjectRepository.findById(id);
             if (subjectUpdate.isEmpty()){
@@ -117,13 +113,28 @@ public class SubjectService{
             }
             List<Subject> subjects = subjectRepository.findAll();
             if (subjects.stream().anyMatch(existingsubject ->
-                    existingsubject.getName().equalsIgnoreCase(subject.getName()))) {
-                throw new DuplicateDataException("Student email already exists " + subject.getName());
+                    existingsubject.getName().equalsIgnoreCase(newSubject.getName()))) {
+                throw new DuplicateDataException("Subject name already exists " + newSubject.getName());
             }
-            Subject existing = subjectUpdate.get();
-            existing.setName(subject.getName());
-            subjectRepository.save(existing);
-        }catch (NotFoundException| DuplicateDataException e){
+            Subject existingSubject = subjectUpdate.get();
+            existingSubject.setName(newSubject.getName());
+
+            // update many-to-many relation with students
+            List<Student> existingStudents = existingSubject.getStudents();
+            List<Student> newStudents = newSubject.getStudents();
+            for (Student student : newStudents) {
+                if (!existingStudents.contains(student)) {
+                    existingStudents.add(student);
+                }
+            }
+            existingStudents.removeIf(student -> !newStudents.contains(student));
+            existingSubject.setStudents(existingStudents);
+
+            // update many-to-one relation with teacher
+            existingSubject.setTeacher(newSubject.getTeacher());
+
+            subjectRepository.save(existingSubject);
+        } catch (NotFoundException| DuplicateDataException e){
             throw e;
         } catch (Exception e){
             throw new RuntimeException(e);
@@ -148,7 +159,7 @@ public class SubjectService{
 
     public Optional<Page<Subject>> findStudentInSubjectByName(String firstName, String lastName, Pageable pageable){
         try {
-            Optional<Page<Subject>> subjects = subjectRepository.findByStudents_FirstNameContainsIgnoreCaseAndStudents_LastNameContainsIgnoreCase(firstName,lastName,pageable);
+            Optional<Page<Subject>> subjects = subjectRepository.findByStudents_FirstNameContainsIgnoreCaseOrStudents_LastNameIgnoreCase(firstName,lastName,pageable);
             if (subjects.isEmpty()){
                 throw new NotFoundException("Cannot Find Student");
             }
@@ -169,4 +180,62 @@ public class SubjectService{
             throw new RuntimeException(e);
         }
     }
+
+    public Subject addStudentsToSubject(Integer subjectId, List<Student> students) {
+        try {
+            Optional<Subject> subjectOptional = subjectRepository.findById(subjectId);
+            if (subjectOptional.isEmpty()) {
+                throw new NotFoundException("Subject not found with id: " + subjectId);
+            }
+
+            Subject subject = subjectOptional.get();
+            List<Student> existingStudents = subject.getStudents();
+
+            List<Integer> newStudentIds = students.stream().map(Student::getId).toList();
+
+            for (Student existingStudent : existingStudents) {
+                if (newStudentIds.contains(existingStudent.getId())) {
+                    throw new DuplicateDataException("Student with id " + existingStudent.getId() + " already exists in the subject");
+                }
+            }
+            boolean hasDuplicateIds = newStudentIds.stream().distinct().count() != newStudentIds.size();
+            if (hasDuplicateIds) {
+                throw new DuplicateDataException("Duplicate student ids are not allowed");
+            }
+
+            existingStudents.addAll(students);
+
+            return subjectRepository.save(subject);
+        }catch (NotFoundException | DuplicateDataException e){
+            throw e;
+        }catch (Exception e){
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+
+    public Subject updateTeacherInSubject(Integer subjectId, Teacher teacher) {
+        Optional<Subject> subjectOptional = subjectRepository.findById(subjectId);
+        if (subjectOptional.isEmpty()) {
+            throw new NotFoundException("Subject not found with id: " + subjectId);
+        }
+
+        Subject subject = subjectOptional.get();
+
+        // Cek apakah teacher sudah ada di database
+        Optional<Teacher> teacherOptional = teacherRepository.findById(teacher.getId());
+        if (teacherOptional.isEmpty()) {
+            throw new NotFoundException("Teacher not found with id: " + teacher.getId());
+        }
+        Teacher validTeacher = teacherOptional.get();
+
+        // Cek apakah teacher yang di-pass sama dengan teacher yang sudah ada di Subject
+        if (subject.getTeacher() != null && subject.getTeacher().equals(validTeacher)) {
+            throw new DuplicateDataException("Teacher already Teaching the subject");
+        }
+
+        subject.setTeacher(validTeacher);
+        return subjectRepository.save(subject);
+    }
+
 }
