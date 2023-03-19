@@ -1,6 +1,7 @@
 package com.enigmaschool.enigmaschool3springjpa.Controller;
 
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.IdentityDto;
+import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.InsertIntoSubject;
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.SearchDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.SubjectDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Student;
@@ -33,11 +34,6 @@ import java.util.stream.Collectors;
 public class SubjectController {
     @Autowired
     SubjectService schoolService;
-    @Autowired
-    teacherService teacherService;
-
-    studentService studentService;
-
     @Autowired
     ModelMapper modelMapper;
 
@@ -108,7 +104,10 @@ public class SubjectController {
     }
 
     @PostMapping("/{subjectId}/add-students")
-    public ResponseEntity<?> addStudentsToSubject(@PathVariable Integer subjectId, @RequestBody List<Student> students) {
+    public ResponseEntity addStudentsToSubject(@PathVariable Integer subjectId, @RequestBody List< Student> students) {
+//        List<Student> collect = students.stream().
+//                map(studentReq -> modelMapper.map(studentReq, Student.class))
+//                .collect(Collectors.toList());
         Subject subject = schoolService.addStudentsToSubject(subjectId, students);
         return ResponseEntity.ok().body(new SuccessResponse<>("Success", subject));
     }
@@ -116,10 +115,16 @@ public class SubjectController {
 
 
     @PutMapping("/{subjectId}/change-teacher")
-    public ResponseEntity changeTeacherInSubject(@PathVariable Integer subjectId, @RequestBody Teacher teacher) {
+    public ResponseEntity changeTeacherInSubject(@PathVariable Integer subjectId,  @RequestBody Teacher teacher) {
+//        Teacher teacherDto = modelMapper.map(teacher, Teacher.class);
         Subject subject = schoolService.updateTeacherInSubject(subjectId,teacher);
         CommonResponse commonResponse = new SuccessResponse<>("Success", subject);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
     }
 
+    @DeleteMapping("/{subjectId}/deleteStudents")
+    public ResponseEntity deleteStudent(@PathVariable Integer subjectId, @RequestBody List<Student> studentId){
+        Subject subject = schoolService.deleteStudentsFromSubject(subjectId,studentId);
+        return ResponseEntity.ok().body(new SuccessResponse<>("Success",subject));
+    }
 }

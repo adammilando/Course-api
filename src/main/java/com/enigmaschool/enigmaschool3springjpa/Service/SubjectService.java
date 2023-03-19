@@ -76,7 +76,7 @@ public class SubjectService{
             for (Subject subject : subjects) {
                 Set<String> emailSet = subjects.stream().map(Subject::getName).collect(Collectors.toSet());
                 if (emailSet.size() != subjects.size()) {
-                    throw new DataIntegrityViolationException("Duplicate email found in bulk data " + subject.getName());
+                    throw new DataIntegrityViolationException("Duplicate name found in bulk data " + subject.getName());
                 }
                 if (subjectList.stream().anyMatch(existingSubject -> existingSubject.getName().equalsIgnoreCase(subject.getName()))) {
                     throw new DataIntegrityViolationException("Teacher email already exists " + subject.getName());
@@ -163,8 +163,14 @@ public class SubjectService{
             if (subjects.isEmpty()){
                 throw new NotFoundException("Cannot Find Student");
             }
+            Page<Subject> subjectPage = subjectRepository.findAll(pageable);
+            if (subjectPage.isEmpty()){
+                throw new NotFoundException("Wrong Page Size");
+            }
             return subjects;
-        }catch (Exception e){
+        }catch (NotFoundException e){
+            throw e;
+        } catch (Exception e){
             throw new RuntimeException(e);
         }
     }
@@ -176,7 +182,9 @@ public class SubjectService{
                 throw new NotFoundException("Cannot Find Teacher");
             }
             return subjects;
-        }catch (Exception e){
+        }catch (NotFoundException e){
+            throw e;
+        } catch (Exception e){
             throw new RuntimeException(e);
         }
     }
@@ -202,7 +210,6 @@ public class SubjectService{
             if (hasDuplicateIds) {
                 throw new DuplicateDataException("Duplicate student ids are not allowed");
             }
-
             existingStudents.addAll(students);
 
             return subjectRepository.save(subject);
@@ -215,27 +222,53 @@ public class SubjectService{
 
 
     public Subject updateTeacherInSubject(Integer subjectId, Teacher teacher) {
-        Optional<Subject> subjectOptional = subjectRepository.findById(subjectId);
-        if (subjectOptional.isEmpty()) {
-            throw new NotFoundException("Subject not found with id: " + subjectId);
+        try {
+            Optional<Subject> subjectOptional = subjectRepository.findById(subjectId);
+            if (subjectOptional.isEmpty()) {
+                throw new NotFoundException("Subject not found with id: " + subjectId);
+            }
+
+            Subject subject = subjectOptional.get();
+
+            // Cek apakah teacher sudah ada di database
+            Optional<Teacher> teacherOptional = teacherRepository.findById(teacher.getId());
+            if (teacherOptional.isEmpty()) {
+                throw new NotFoundException("Teacher not found with id: " + teacher.getId());
+            }
+            Teacher validTeacher = teacherOptional.get();
+
+            // Cek apakah teacher yang di-pass sama dengan teacher yang sudah ada di Subject
+            if (subject.getTeacher() != null && subject.getTeacher().equals(validTeacher)) {
+                throw new DuplicateDataException("Teacher already Teaching the subject");
+            }
+
+            subject.setTeacher(validTeacher);
+            return subjectRepository.save(subject);
+        }catch (NotFoundException | DuplicateDataException e){
+            throw e;
+        }catch (Exception e){
+            throw new RuntimeException(e.getMessage());
         }
-
-        Subject subject = subjectOptional.get();
-
-        // Cek apakah teacher sudah ada di database
-        Optional<Teacher> teacherOptional = teacherRepository.findById(teacher.getId());
-        if (teacherOptional.isEmpty()) {
-            throw new NotFoundException("Teacher not found with id: " + teacher.getId());
-        }
-        Teacher validTeacher = teacherOptional.get();
-
-        // Cek apakah teacher yang di-pass sama dengan teacher yang sudah ada di Subject
-        if (subject.getTeacher() != null && subject.getTeacher().equals(validTeacher)) {
-            throw new DuplicateDataException("Teacher already Teaching the subject");
-        }
-
-        subject.setTeacher(validTeacher);
-        return subjectRepository.save(subject);
     }
+
+    @Transactional
+    public Subject deleteStudentsFromSubject(Integer subjectId, List<Student> students) {
+        try {
+            Optional<Subject> optionalSubject = subjectRepository.findById(subjectId);
+            if (optionalSubject.isEmpty()) {
+                throw new NotFoundException("Subject with id " + subjectId + " not found");
+            }
+            Subject subject = optionalSubject.get();
+            List<Student> subjectStudents = subject.getStudents();
+            subjectStudents.removeIf(student -> students.stream()
+                    .anyMatch(deleteStudent -> deleteStudent.getId().equals(student.getId())));
+            return subjectRepository.save(subject);
+        } catch (NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }
