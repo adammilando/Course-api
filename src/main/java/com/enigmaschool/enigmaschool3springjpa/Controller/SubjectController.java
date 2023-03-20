@@ -104,20 +104,20 @@ public class SubjectController {
     }
 
     @PostMapping("/{subjectId}/add-students")
-    public ResponseEntity addStudentsToSubject(@PathVariable Integer subjectId, @RequestBody List< Student> students) {
-//        List<Student> collect = students.stream().
-//                map(studentReq -> modelMapper.map(studentReq, Student.class))
-//                .collect(Collectors.toList());
-        Subject subject = schoolService.addStudentsToSubject(subjectId, students);
+    public ResponseEntity addStudentsToSubject(@PathVariable Integer subjectId, @RequestBody List< @Valid InsertIntoSubject> students) {
+        List<Student> collect = students.stream().
+                map(studentReq -> modelMapper.map(studentReq, Student.class))
+                .collect(Collectors.toList());
+        Subject subject = schoolService.addStudentsToSubject(subjectId, collect);
         return ResponseEntity.ok().body(new SuccessResponse<>("Success", subject));
     }
 
 
 
     @PutMapping("/{subjectId}/change-teacher")
-    public ResponseEntity changeTeacherInSubject(@PathVariable Integer subjectId,  @RequestBody Teacher teacher) {
-//        Teacher teacherDto = modelMapper.map(teacher, Teacher.class);
-        Subject subject = schoolService.updateTeacherInSubject(subjectId,teacher);
+    public ResponseEntity changeTeacherInSubject(@PathVariable Integer subjectId,@Valid  @RequestBody InsertIntoSubject teacher) {
+        Teacher teacherDto = modelMapper.map(teacher, Teacher.class);
+        Subject subject = schoolService.updateTeacherInSubject(subjectId,teacherDto);
         CommonResponse commonResponse = new SuccessResponse<>("Success", subject);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
     }

@@ -56,7 +56,7 @@ public class SubjectService{
             List<Subject> subjects = subjectRepository.findAll();
             if (subjects.stream().anyMatch(existingSubject ->
                     existingSubject.getName().equalsIgnoreCase(subject.getName()))) {
-                throw new DataIntegrityViolationException("Teacher email already exists " + subject.getName());
+                throw new DataIntegrityViolationException("Subject already exists " + subject.getName());
             }
             return subjectRepository.save(subject);
         }catch (MaxDataException | DuplicateDataException e){
@@ -79,7 +79,7 @@ public class SubjectService{
                     throw new DataIntegrityViolationException("Duplicate name found in bulk data " + subject.getName());
                 }
                 if (subjectList.stream().anyMatch(existingSubject -> existingSubject.getName().equalsIgnoreCase(subject.getName()))) {
-                    throw new DataIntegrityViolationException("Teacher email already exists " + subject.getName());
+                    throw new DataIntegrityViolationException("Subject already exists " + subject.getName());
                 }
             }
             return subjectRepository.saveAll(subjects);
@@ -119,18 +119,19 @@ public class SubjectService{
             Subject existingSubject = subjectUpdate.get();
             existingSubject.setName(newSubject.getName());
 
-            // update many-to-many relation with students
+            // untuk mendapatkan data student yang sudah ada pada subject
             List<Student> existingStudents = existingSubject.getStudents();
+            // list student baru yang mau ditambah jika blom ada pada subject
             List<Student> newStudents = newSubject.getStudents();
             for (Student student : newStudents) {
                 if (!existingStudents.contains(student)) {
                     existingStudents.add(student);
                 }
             }
+            //hapus student yang sudah tidak ada pada subject
             existingStudents.removeIf(student -> !newStudents.contains(student));
             existingSubject.setStudents(existingStudents);
 
-            // update many-to-one relation with teacher
             existingSubject.setTeacher(newSubject.getTeacher());
 
             subjectRepository.save(existingSubject);
@@ -195,17 +196,20 @@ public class SubjectService{
             if (subjectOptional.isEmpty()) {
                 throw new NotFoundException("Subject not found with id: " + subjectId);
             }
-
+            //get student dari subject yang dicari
             Subject subject = subjectOptional.get();
             List<Student> existingStudents = subject.getStudents();
 
+            // untuk mengeck id baru yang ditambahkan
             List<Integer> newStudentIds = students.stream().map(Student::getId).toList();
 
+            //cek id student yang baru ditambah apakah sudah ada atau belum pada subject
             for (Student existingStudent : existingStudents) {
                 if (newStudentIds.contains(existingStudent.getId())) {
                     throw new DuplicateDataException("Student with id " + existingStudent.getId() + " already exists in the subject");
                 }
             }
+            //periksa duplikat di data bulk
             boolean hasDuplicateIds = newStudentIds.stream().distinct().count() != newStudentIds.size();
             if (hasDuplicateIds) {
                 throw new DuplicateDataException("Duplicate student ids are not allowed");
