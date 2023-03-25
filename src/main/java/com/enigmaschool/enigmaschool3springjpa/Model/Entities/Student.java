@@ -30,7 +30,7 @@ public class Student {
     @Column(name = "email", nullable = false, unique = true)
     private @NotNull String email;
 
-    @ManyToMany(mappedBy = "students")
+    @ManyToMany(mappedBy = "students", cascade = CascadeType.REMOVE)
     @JsonBackReference
     private Set<Subject> subjects;
 

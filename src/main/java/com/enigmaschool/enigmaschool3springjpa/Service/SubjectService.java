@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
 public class SubjectService{
     @Autowired
     private SubjectRepository subjectRepository;
-    @Autowired
-    private studentService studentService;
 
     private final int DB_MAX_DATA = 6;
     @Autowired
@@ -49,8 +47,7 @@ public class SubjectService{
 
     public Subject create(Subject subject) {
         try {
-            Long count = subjectRepository.count();
-            if (count>= DB_MAX_DATA){
+            if (subjectRepository.findAll().size()>= DB_MAX_DATA){
                 throw new MaxDataException("Student",DB_MAX_DATA);
             }
             List<Subject> subjects = subjectRepository.findAll();

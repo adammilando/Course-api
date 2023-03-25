@@ -1,10 +1,10 @@
 package com.enigmaschool.enigmaschool3springjpa.Controller;
 
 import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.IdentityDto;
+import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.SearchDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.CommonResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.SuccessResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Student;
-import com.enigmaschool.enigmaschool3springjpa.Service.ISchoolService;
 import com.enigmaschool.enigmaschool3springjpa.Service.studentService;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -54,6 +55,17 @@ public class StudentController {
                 .collect(Collectors.toList());
         List<Student> creatBulk = schoolService.createBulk(students);
         CommonResponse commonResponse = new SuccessResponse<>("Success", creatBulk);
+        return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
+    }
+
+    @PostMapping("/search/studentName/{size}/{page}/{sort}")
+    public ResponseEntity findStudentByname(@PathVariable SearchDto searchDto, @PathVariable int size, @PathVariable int page, @PathVariable String sort){
+        Pageable pageable = PageRequest.of(size, page, Sort.by("id").ascending());
+        if (sort.equalsIgnoreCase("desc")){
+            pageable = PageRequest.of(size,page, Sort.by("id").descending());
+        }
+        Optional<Page<Student>> students = schoolService.fingByName(searchDto.getSearchFirstName(),searchDto.getSearchLastName(),pageable);
+        CommonResponse commonResponse = new SuccessResponse<>("Success",students);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
     }
 

@@ -47,8 +47,8 @@ public class studentService {
 
     public Student create(Student student) {
         try {
-            Long count = studentRepository.count();
-            if (count >= DB_MAX_DATA){
+//            Long count = studentRepository.count();
+            if (studentRepository.findAll().size() >= DB_MAX_DATA){
                 throw new MaxDataException("Student", DB_MAX_DATA);
             }
             List<Student> students = studentRepository.findAll();
@@ -138,9 +138,9 @@ public class studentService {
         }
     }
 
-    public Optional<List<Student>> fingByName(String firstName, String lastName){
+    public Optional<Page<Student>> fingByName(String firstName, String lastName, Pageable pageable){
        try {
-           Optional<List<Student>>student = studentRepository.findByFirstNameContainsIgnoreCaseOrLastNameContainsIgnoreCase(firstName,lastName);
+           Optional<Page<Student>>student = studentRepository.findByFirstNameContainsIgnoreCaseOrLastNameContainsIgnoreCase(firstName,lastName, pageable);
            if (student.isEmpty()){
                throw new NotFoundException("Cannot Find Student");
            }

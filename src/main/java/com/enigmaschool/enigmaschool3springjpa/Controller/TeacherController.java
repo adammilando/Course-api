@@ -4,7 +4,6 @@ import com.enigmaschool.enigmaschool3springjpa.Model.Dtos.IdentityDto;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.CommonResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Response.SuccessResponse;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Teacher;
-import com.enigmaschool.enigmaschool3springjpa.Service.ISchoolService;
 import com.enigmaschool.enigmaschool3springjpa.Service.teacherService;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;

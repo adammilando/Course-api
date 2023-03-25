@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -37,9 +38,12 @@ public class SubjectController {
     @Autowired
     ModelMapper modelMapper;
 
-    @GetMapping("/{size}/{page}")
-    public ResponseEntity getAllSubject(@PathVariable("size") int size, @PathVariable("page") int page){
-        Pageable pageable = PageRequest.of(page, size);
+    @GetMapping("/{size}/{page}/{sort}")
+    public ResponseEntity getAllSubject(@PathVariable("size") int size, @PathVariable("page") int page, @PathVariable("sort") String sort){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        if (sort.equalsIgnoreCase("desc")){
+            pageable = PageRequest.of(size, page, Sort.by("name").descending());
+        }
         Page<Subject> subjectList = schoolService.getAll(pageable);
         CommonResponse successResponse = new SuccessResponse<>("Success", subjectList);
         return ResponseEntity.status(HttpStatus.OK).body(successResponse);
@@ -65,7 +69,7 @@ public class SubjectController {
 
     @PostMapping("/search/studentName/{size}/{page}")
     public ResponseEntity findStudentName(@RequestBody SearchDto searchDto,@PathVariable("size") int size, @PathVariable("page") int page){
-        Pageable pageable = PageRequest.of(size,page);
+        Pageable pageable = PageRequest.of(size,page, Sort.by("id").ascending());
         Optional<Page<Subject>> subjects = schoolService.findStudentInSubjectByName(searchDto.getSearchFirstName(), searchDto.getSearchLastName(),pageable);
         CommonResponse commonResponse = new SuccessResponse<>("Success",subjects);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);
@@ -73,7 +77,7 @@ public class SubjectController {
 
     @PostMapping("/search/teacherName/{size}/{page}")
     public ResponseEntity findTeacherName(@RequestBody SearchDto searchDto, @PathVariable int size, @PathVariable int page){
-        Pageable pageable = PageRequest.of(size,page);
+        Pageable pageable = PageRequest.of(size,page, Sort.by("id").ascending());
         Optional<Page<Subject>> subjects = schoolService.findTeacherInSubjectByName(searchDto.getSearchFirstName(),searchDto.getSearchLastName(),pageable);
         CommonResponse commonResponse = new SuccessResponse<>("Success", subjects);
         return ResponseEntity.status(HttpStatus.OK).body(commonResponse);

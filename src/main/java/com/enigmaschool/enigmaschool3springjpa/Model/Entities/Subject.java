@@ -22,8 +22,7 @@ public class Subject {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.CASCADE)
+    @ManyToMany(fetch = FetchType.LAZY,cascade = CascadeType.REMOVE)
     @JoinTable(
             name = "subject_student",
             joinColumns = @JoinColumn(name = "subject_id"),
@@ -32,7 +31,6 @@ public class Subject {
     private List<Student> students;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "teacher_id")
     private Teacher teacher;
 

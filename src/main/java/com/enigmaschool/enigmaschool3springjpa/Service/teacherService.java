@@ -42,8 +42,7 @@ public class teacherService{
 
     public Teacher create(Teacher teacher) {
         try {
-            Long count = teacherRepository.count();
-            if (count >= DB_MAX_DATA){
+            if (teacherRepository.findAll().size() >= DB_MAX_DATA){
                 throw new MaxDataException("Teacher", DB_MAX_DATA);
             }
             List<Teacher> teachers = teacherRepository.findAll();
