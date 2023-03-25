@@ -1,12 +1,8 @@
 package com.enigmaschool.enigmaschool3springjpa.Service;
-
-import com.enigmaschool.enigmaschool3springjpa.Exception.DuplicateDataException;
 import com.enigmaschool.enigmaschool3springjpa.Exception.MaxDataException;
 import com.enigmaschool.enigmaschool3springjpa.Exception.NotFoundException;
 import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Student;
-import com.enigmaschool.enigmaschool3springjpa.Model.Entities.Teacher;
 import com.enigmaschool.enigmaschool3springjpa.Repository.StudentRepository;
-import com.enigmaschool.enigmaschool3springjpa.Utils.TryCatchExecutor;
 import org.apache.juli.logging.Log;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
